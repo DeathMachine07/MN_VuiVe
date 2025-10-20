@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatMN Siêu Vui Vẻ</title>
+     <style>
+        body {
+            background-color: #000000;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #chat-container {
+            width: 95vw;
+            max-width: 1400px;
+            height: 95vh;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #424242;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #chat-history {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- CSS CHO PLACEHOLDER 'ChatMN' --- */
+        #chat-placeholder {
+            flex-grow: 1; /* Giúp nó chiếm hết không gian còn lại */
+            display: flex;
+            justify-content: center; /* Căn giữa theo chiều ngang */
+            align-items: center;    /* Căn giữa theo chiều dọc */
+            color: #555; /* Màu xám */
+            font-size: 3rem; /* Kích thước chữ */
+            font-weight: bold;
+            user-select: none; /* Không cho người dùng bôi đen chữ */
+        }
+        /* -------------------------------------- */
+
+        .message {
+            max-width: 80%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .user-message {
+            background-color: #424242;
+            align-self: flex-end;
+        }
+        
+        .ai-message {
+            background-color: transparent;
+            align-self: flex-start;
+            padding: 5px 0;
+            border-radius: 0;
+            max-width: 98%;
+        }
+
+        #input-area {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #424242;
+        }
+
+        #user-input {
+            flex-grow: 1;
+            background-color: #424242;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            resize: none;
+            font-size: 16px;
+        }
+
+        #send-button {
+            background-color: #f5f5f5;
+            color: black;
+            border: none;
+            padding: 10px 15px;
+            margin-left: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #send-button:hover {
+            background-color: #c0c0c0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="chat-container">
+        <div id="chat-history">
+            <div id="chat-placeholder">ChatMN</div>
+        </div>
+        <div id="input-area">
+            <textarea id="user-input" placeholder="Hỏi ChatMN bất cứ điều gì..."></textarea>
+            <button id="send-button">Gửi</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatHistory = document.getElementById('chat-history');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            const chatPlaceholder = document.getElementById('chat-placeholder');
+
+            // THAY THẾ 'YOUR_API_KEY' BẰNG KHÓA API CỦA BẠN
+            const API_KEY = 'AIzaSyDm5t_0OiuEIXEuCBQ5UORlUE1O1l21N_g';
+            
+            // 1. NÂNG CẤP LÊN MODEL GEMINI 1.5 PRO
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${API_KEY}`;
+            
+            // 2. TẠO TÍNH CÁCH CHO AI VÀ YÊU CẦU TRẢ LỜI TIẾNG VIỆT
+            const systemInstruction = {
+                role: "model",
+                parts: [{
+                    text: "Bạn là một trợ lý AI tên là ChatMN, cực kỳ vui tính, thân thiện và một chút nhí nhảnh. Hãy luôn trả lời bằng giọng văn của giới trẻ Việt Nam, sử dụng emoji và icon (như :>, :3, ^^) một cách tự nhiên. Giữ câu trả lời ngắn gọn, dễ thương và đôi khi pha trò nhé! QUAN TRỌNG: LUÔN LUÔN trả lời bằng Tiếng Việt, không dùng ngôn ngữ nào khác."
+                }]
+            };
+
+            let conversationHistory = [systemInstruction];
+
+            sendButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            function sendMessage() {
+                const messageText = userInput.value.trim();
+                if (messageText === '') return;
+                
+                if (!API_KEY || API_KEY === 'YOUR_API_KEY') {
+                   alert('Bạn ơi, thay "YOUR_API_KEY" bằng API Key của bạn trong file code đi nè :>');
+                   return;
+                }
+
+                if (chatPlaceholder) {
+                    chatPlaceholder.style.display = 'none';
+                }
+
+                appendMessage(messageText, 'user-message');
+                conversationHistory.push({ role: "user", parts: [{ text: messageText }] });
+                userInput.value = '';
+
+                const waitingMessage = appendMessage('ChatMN đang nghĩ..', 'ai-message');
+
+                fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: conversationHistory })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Lỗi mạng rùi: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    chatHistory.removeChild(waitingMessage);
+                    
+                    if (data.candidates && data.candidates.length > 0) {
+                        const candidate = data.candidates[0];
+                        let aiResponse = "";
+
+                        // 3. KIỂM TRA LÝ DO KẾT THÚC ĐỂ SỬA LỖI LẶP TỪ
+                        const finishReason = candidate.finishReason;
+                        
+                        if (candidate.content && candidate.content.parts) {
+                            aiResponse = candidate.content.parts[0].text;
+                        }
+
+                        if (finishReason === "MAX_TOKENS") {
+                            aiResponse += "\n\n*(Ui, mình nói hơi dài nên bị ngắt quãng giữa chừng mất rùi... :<)*";
+                        } else if (finishReason === "SAFETY") {
+                            aiResponse = "Ối, câu trả lời này hơi nhạy cảm nên mình không nói được. Bạn hỏi câu khác được không? ^^";
+                        } else if (!aiResponse) {
+                            aiResponse = "Hic, mình bị bí từ rồi, không nghĩ ra câu trả lời. Bạn thử lại nha! :(";
+                        }
+
+                        appendMessage(aiResponse, 'ai-message');
+                        conversationHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+
+                    } else {
+                         appendMessage('Huhu, hình như có lỗi gì đó từ phía API rùi á. :(', 'ai-message system-notification');
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi:', error);
+                    chatHistory.removeChild(waitingMessage);
+                    appendMessage(`Gặp lỗi rùi nè: ${error.message}. Bạn check lại F12 xem sao nha!`, 'ai-message system-notification');
+                });
+            }
+
+            function appendMessage(text, className) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message', className);
+
+                // Xử lý markdown cho tất cả tin nhắn AI, kể cả tin nhắn chờ
+                if (className.includes('ai-message')) { 
+                    let formattedText = text
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br>');
+                    messageElement.innerHTML = formattedText;
+                } else {
+                    messageElement.textContent = text;
+                }
+
+                chatHistory.appendChild(messageElement);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+                return messageElement;
+            }
+        });
+    </script>
+
+</body>
+</html>
